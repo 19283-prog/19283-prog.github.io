@@ -60,6 +60,21 @@
     .menu-card h1 { font-size: clamp(2rem,6vw,3.2rem); letter-spacing: 0.05em; color: var(--accent); text-shadow: 0 0 24px rgba(255,228,75,0.4); margin-bottom: 8px; }
     .menu-card p { color: #b8d0f0; font-size: 0.97rem; line-height: 1.55; margin-bottom: 20px; }
     .menu-card .sub { font-size: 0.82rem; color: #6a8cbf; margin-top: 12px; }
+    .audio-controls {
+      margin-top: 18px; display: grid; gap: 10px;
+    }
+    .audio-row {
+      display: grid; grid-template-columns: 92px 1fr 52px;
+      gap: 10px; align-items: center;
+      color: #dce9fb; font-size: 0.9rem;
+    }
+    .audio-row input[type="range"] {
+      width: 100%;
+      accent-color: #ffe44b;
+    }
+    .audio-row span {
+      text-align: right; color: #ffe44b; font-weight: 700;
+    }
     .btn {
       appearance: none; border: 2px solid rgba(255,255,255,0.18);
       border-radius: 12px; cursor: pointer; font: inherit; font-weight: 700;
@@ -148,6 +163,23 @@
       <button class="btn btn-secondary" id="skipBtn">Skip Level</button>
       <button class="btn btn-secondary" id="soundBtn">Test Sound</button>
     </div>
+    <div class="audio-controls">
+      <label class="audio-row">
+        <strong>Master</strong>
+        <input id="masterVolume" type="range" min="0" max="100" value="90">
+        <span id="masterVolumeValue">90%</span>
+      </label>
+      <label class="audio-row">
+        <strong>Music</strong>
+        <input id="musicVolume" type="range" min="0" max="100" value="45">
+        <span id="musicVolumeValue">45%</span>
+      </label>
+      <label class="audio-row">
+        <strong>SFX</strong>
+        <input id="sfxVolume" type="range" min="0" max="100" value="100">
+        <span id="sfxVolumeValue">100%</span>
+      </label>
+    </div>
     <p class="sub">Arrow keys / WASD · Space = Jump · R = Restart · Enter = Start</p>
   </div>
 </div>
@@ -185,6 +217,12 @@ const playBtn = document.getElementById("playBtn");
 const skipBtnMenu = document.getElementById("skipBtn");
 const soundBtn = document.getElementById("soundBtn");
 const bgMusic = document.getElementById("bgMusic");
+const masterVolumeSlider = document.getElementById("masterVolume");
+const musicVolumeSlider = document.getElementById("musicVolume");
+const sfxVolumeSlider = document.getElementById("sfxVolume");
+const masterVolumeValue = document.getElementById("masterVolumeValue");
+const musicVolumeValue = document.getElementById("musicVolumeValue");
+const sfxVolumeValue = document.getElementById("sfxVolumeValue");
 const lvlNum = document.getElementById("lvlNum");
 const deathNum = document.getElementById("deathNum");
 const timerNum = document.getElementById("timerNum");
@@ -225,6 +263,9 @@ let deaths = 0;
 let startTime = 0;
 let level = null;
 let justPressedJump = false;
+let masterVolume = 0.9;
+let musicVolume = 0.45;
+let sfxVolume = 1;
 
 // ─── Player ───────────────────────────────────────────────────────────────────
 const PLAYER_W = 22, PLAYER_H = 28;
@@ -265,12 +306,20 @@ function showDeathMsg(msg) {
 
 let audioCtx = null;
 let masterGain = null;
+function updateAudioMix() {
+  masterVolumeValue.textContent = `${Math.round(masterVolume * 100)}%`;
+  musicVolumeValue.textContent = `${Math.round(musicVolume * 100)}%`;
+  sfxVolumeValue.textContent = `${Math.round(sfxVolume * 100)}%`;
+  if (masterGain) masterGain.gain.value = masterVolume * sfxVolume;
+  bgMusic.volume = masterVolume * musicVolume;
+}
+
 function ensureAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.9;
     masterGain.connect(audioCtx.destination);
+    updateAudioMix();
   }
   if (audioCtx.state === "suspended") audioCtx.resume();
   return audioCtx;
@@ -283,7 +332,7 @@ function unlockAudioFromGesture() {
   }
 }
 
-bgMusic.volume = 0.45;
+updateAudioMix();
 bgMusic.loop = false;
 
 bgMusic.addEventListener("ended", () => {
@@ -291,8 +340,9 @@ bgMusic.addEventListener("ended", () => {
   bgMusic.play().catch(() => {});
 });
 
-function startMusic() {
-  bgMusic.volume = 0.45;
+function startMusic(resetTrack=false) {
+  updateAudioMix();
+  if (resetTrack) bgMusic.currentTime = 0;
   if (bgMusic.paused) {
     bgMusic.play().catch(() => {});
   }
@@ -866,7 +916,7 @@ function loadLevel(idx) {
 
 function startGame() {
   ensureAudio();
-  startMusic();
+  startMusic(true);
   playSound("start");
   inMenu = false; gameWon = false;
   playBtn.textContent = "▶ PLAY";
@@ -890,7 +940,7 @@ function restartAll() {
   deaths = 0;
   inMenu = false;
   gameWon = false;
-  startMusic();
+  startMusic(true);
   playBtn.textContent = "▶ PLAY";
   skipBtnMenu.textContent = "Skip Level";
   skipBtnMenu.style.display = "inline-block";
@@ -908,7 +958,6 @@ function jumpToLevel(idx) {
   if (idx < 0 || idx >= LEVEL_COUNT) return;
   if (inMenu || gameWon) {
     ensureAudio();
-    startMusic();
     inMenu = false;
     gameWon = false;
     playBtn.textContent = "▶ PLAY";
@@ -918,6 +967,8 @@ function jumpToLevel(idx) {
     overlay.classList.add("hidden");
     startTime = Date.now();
   }
+  ensureAudio();
+  startMusic(true);
   closeLevelSelect();
   loadLevel(idx);
 }
@@ -943,11 +994,23 @@ skipBtnMenu.addEventListener("click", () => {
 });
 soundBtn.addEventListener("click", () => {
   ensureAudio();
-  startMusic();
+  startMusic(true);
   playSound("start");
   setTimeout(() => playSound("jump"), 120);
   setTimeout(() => playSound("pickup"), 240);
   flashPowerup("✦ Sound test");
+});
+masterVolumeSlider.addEventListener("input", () => {
+  masterVolume = Number(masterVolumeSlider.value) / 100;
+  updateAudioMix();
+});
+musicVolumeSlider.addEventListener("input", () => {
+  musicVolume = Number(musicVolumeSlider.value) / 100;
+  updateAudioMix();
+});
+sfxVolumeSlider.addEventListener("input", () => {
+  sfxVolume = Number(sfxVolumeSlider.value) / 100;
+  updateAudioMix();
 });
 closeLevelSelectBtn.addEventListener("click", closeLevelSelect);
 levelSelect.addEventListener("click", e => {
