@@ -1,3 +1,5 @@
 git add .
-git commit -m "update"
+git commit -m "add player movement"
+git commit -m "fix audio bug"
+git commit -m "add main menu"
 git push
