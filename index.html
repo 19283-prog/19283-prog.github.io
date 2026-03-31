@@ -673,8 +673,13 @@
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
-<audio id="homeMusic" src="Pixelated%20Adventure.mp3" preload="auto" loop></audio>
-<audio id="bgMusic" src="Calm%20in%20the%20Clouds%20Loop.wav" preload="auto" loop></audio>
+<audio id="homeMusic" preload="auto" loop playsinline>
+  <source src="Pixelated%20Adventure.mp3" type="audio/mpeg">
+</audio>
+<audio id="bgMusic" preload="auto" loop playsinline>
+  <source src="Calm%20in%20the%20Clouds.mp3" type="audio/mpeg">
+  <source src="Calm%20in%20the%20Clouds%20Loop.wav" type="audio/wav">
+</audio>
 
 <div id="ui">
   <div id="hudLeft">
